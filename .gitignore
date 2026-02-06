@@ -1,0 +1,26 @@
+# Scala / sbt
+backend/target/
+backend/project/target/
+backend/project/project/
+backend/.bsp/
+*.class
+*.jar
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.log

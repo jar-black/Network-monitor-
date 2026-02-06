@@ -1,0 +1,401 @@
+openapi: 3.1.0
+info:
+  title: Network Monitor API
+  description: |
+    API for monitoring active devices on a local network.
+    The backend scans the network every 5 minutes, registers discovered devices
+    (IP address, MAC address, DNS/hostname), and exposes the data for the React frontend.
+  version: 1.0.0
+  contact:
+    name: Network Monitor
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+  - url: http://{raspberry-pi-ip}:8080/api/v1
+    description: Raspberry Pi deployment
+
+tags:
+  - name: devices
+    description: Operations on discovered network devices
+  - name: scans
+    description: Network scan history and status
+  - name: health
+    description: Service health checks
+
+paths:
+  /health:
+    get:
+      tags: [health]
+      summary: Health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /devices:
+    get:
+      tags: [devices]
+      summary: List all known devices
+      description: |
+        Returns all devices seen on the network. By default returns devices
+        seen in the last 24 hours. Use query parameters to filter.
+      operationId: listDevices
+      parameters:
+        - $ref: "#/components/parameters/ActiveOnly"
+        - $ref: "#/components/parameters/Since"
+        - $ref: "#/components/parameters/Until"
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: List of devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceListResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+
+  /devices/{deviceId}:
+    get:
+      tags: [devices]
+      summary: Get a specific device
+      operationId: getDevice
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+      responses:
+        "200":
+          description: Device details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Device"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /devices/{deviceId}/activity:
+    get:
+      tags: [devices]
+      summary: Get activity history for a device
+      description: |
+        Returns the activity timeline for a device, showing 5-minute intervals
+        where the device was seen as active on the network.
+      operationId: getDeviceActivity
+      parameters:
+        - $ref: "#/components/parameters/DeviceId"
+        - $ref: "#/components/parameters/Since"
+        - $ref: "#/components/parameters/Until"
+      responses:
+        "200":
+          description: Activity timeline
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /scans:
+    get:
+      tags: [scans]
+      summary: List recent network scans
+      description: Returns the history of network scan executions.
+      operationId: listScans
+      parameters:
+        - $ref: "#/components/parameters/Limit"
+        - $ref: "#/components/parameters/Offset"
+      responses:
+        "200":
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanListResponse"
+
+  /scans/latest:
+    get:
+      tags: [scans]
+      summary: Get the latest scan result
+      operationId: getLatestScan
+      responses:
+        "200":
+          description: Latest scan with discovered devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResult"
+
+  /scans/{scanId}:
+    get:
+      tags: [scans]
+      summary: Get a specific scan result
+      operationId: getScan
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Scan result with discovered devices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScanResult"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  parameters:
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+      description: Unique device identifier
+
+    ActiveOnly:
+      name: activeOnly
+      in: query
+      required: false
+      schema:
+        type: boolean
+        default: false
+      description: If true, only return devices seen in the most recent scan
+
+    Since:
+      name: since
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+      description: Start of time range (ISO 8601). Defaults to 24 hours ago.
+
+    Until:
+      name: until
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+      description: End of time range (ISO 8601). Defaults to now.
+
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 500
+        default: 100
+
+    Offset:
+      name: offset
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status, timestamp, database]
+      properties:
+        status:
+          type: string
+          enum: [healthy, degraded, unhealthy]
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: string
+          enum: [connected, disconnected]
+        lastScanAt:
+          type: string
+          format: date-time
+          description: Timestamp of the most recent completed scan
+
+    Device:
+      type: object
+      required: [id, macAddress, ipAddress, firstSeenAt, lastSeenAt, isActive]
+      properties:
+        id:
+          type: string
+          format: uuid
+        macAddress:
+          type: string
+          pattern: "^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"
+          example: "AA:BB:CC:DD:EE:FF"
+        ipAddress:
+          type: string
+          format: ipv4
+          example: "192.168.1.42"
+        hostname:
+          type: string
+          nullable: true
+          description: DNS reverse-lookup name or mDNS name
+          example: "living-room-tv.local"
+        vendor:
+          type: string
+          nullable: true
+          description: Device vendor derived from MAC OUI
+          example: "Apple, Inc."
+        firstSeenAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        isActive:
+          type: boolean
+          description: Whether the device was seen in the most recent scan
+
+    DeviceListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    ActivityEntry:
+      type: object
+      required: [scanTime, active]
+      properties:
+        scanTime:
+          type: string
+          format: date-time
+          description: The 5-minute interval timestamp
+        active:
+          type: boolean
+          description: Whether the device was detected during this scan
+
+    ActivityResponse:
+      type: object
+      required: [deviceId, entries]
+      properties:
+        deviceId:
+          type: string
+          format: uuid
+        macAddress:
+          type: string
+        ipAddress:
+          type: string
+        hostname:
+          type: string
+          nullable: true
+        entries:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActivityEntry"
+          description: |
+            Ordered list of 5-minute intervals showing when the device was active.
+            Sorted chronologically (oldest first).
+
+    ScanSummary:
+      type: object
+      required: [id, startedAt, completedAt, devicesFound]
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        devicesFound:
+          type: integer
+          minimum: 0
+
+    ScanResult:
+      type: object
+      required: [id, startedAt, completedAt, devicesFound, devices]
+      properties:
+        id:
+          type: string
+          format: uuid
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        devicesFound:
+          type: integer
+          minimum: 0
+        devices:
+          type: array
+          items:
+            $ref: "#/components/schemas/Device"
+
+    ScanListResponse:
+      type: object
+      required: [data, pagination]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScanSummary"
+        pagination:
+          $ref: "#/components/schemas/Pagination"
+
+    Pagination:
+      type: object
+      required: [total, limit, offset]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required: [error, message]
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "bad_request"
+            message: "Invalid date format for 'since' parameter"
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+          example:
+            error: "not_found"
+            message: "Device not found"

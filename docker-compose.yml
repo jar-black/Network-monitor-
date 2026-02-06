@@ -1,0 +1,61 @@
+version: "3.9"
+
+services:
+  # ── PostgreSQL Database ──────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: netmon-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: network_monitor
+      POSTGRES_USER: netmon
+      POSTGRES_PASSWORD: netmon
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U netmon -d network_monitor"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ── Backend (Scala / Pekko) ──────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: netmon-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: "jdbc:postgresql://db:5432/network_monitor"
+      DATABASE_USER: netmon
+      DATABASE_PASSWORD: netmon
+      SCAN_NETWORK_CIDR: "192.168.1.0/24"
+      HTTP_HOST: "0.0.0.0"
+      HTTP_PORT: "8080"
+    ports:
+      - "8080:8080"
+    # Required for network scanning (ARP/nmap)
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+
+  # ── Frontend (React / Nginx) ─────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: netmon-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  pgdata:
