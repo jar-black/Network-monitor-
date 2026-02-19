@@ -55,7 +55,7 @@ services:
     extra_hosts:
       - "host.docker.internal:host-gateway"
     ports:
-      - "80:80"
+      - "81:80"
 
 volumes:
   pgdata:
