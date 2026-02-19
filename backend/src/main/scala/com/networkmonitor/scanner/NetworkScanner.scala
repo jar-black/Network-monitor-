@@ -21,9 +21,23 @@ class NetworkScanner(config: ScannerConfig):
 
   /** Run a full scan and return discovered hosts. */
   def scan: IO[List[DiscoveredHost]] =
-    nmapScan.handleErrorWith { err =>
+    val rawScan = nmapScan.handleErrorWith { err =>
       IO(logger.warn(s"nmap scan failed (${err.getMessage}), falling back to arp scan")) *>
         arpScan
+    }
+    rawScan.flatMap(enrichWithReverseDns)
+
+  /** Attempt reverse DNS lookup for hosts missing a hostname. */
+  private def enrichWithReverseDns(hosts: List[DiscoveredHost]): IO[List[DiscoveredHost]] =
+    hosts.parTraverse { host =>
+      host.hostname match
+        case Some(_) => IO.pure(host)
+        case None =>
+          IO.blocking {
+            val canonical = InetAddress.getByName(host.ipAddress).getCanonicalHostName
+            if canonical != host.ipAddress then host.copy(hostname = Some(canonical))
+            else host
+          }.handleError(_ => host)
     }
 
   /** Preferred: use nmap ping scan which returns IP, MAC, and hostname. */

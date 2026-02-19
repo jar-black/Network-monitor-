@@ -40,6 +40,7 @@ function DashboardPage() {
           <thead>
             <tr>
               <th>Status</th>
+              <th>Name</th>
               <th>IP Address</th>
               <th>Hostname</th>
               <th>MAC Address</th>
@@ -57,6 +58,9 @@ function DashboardPage() {
                     borderRadius: '50%',
                     background: device.isActive ? 'var(--color-success)' : 'var(--color-danger)',
                   }} />
+                </td>
+                <td style={{ color: device.displayName ? 'var(--color-text)' : 'var(--color-text-muted)' }}>
+                  {device.displayName ?? device.hostname ?? '-'}
                 </td>
                 <td>
                   <Link to={`/devices/${device.id}`}>

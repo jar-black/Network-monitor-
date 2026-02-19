@@ -11,7 +11,6 @@ import org.apache.pekko.actor.typed.scaladsl.Behaviors
 import org.apache.pekko.http.scaladsl.Http
 import org.slf4j.LoggerFactory
 import pureconfig.*
-import pureconfig.generic.derivation.default.*
 
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration.*

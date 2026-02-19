@@ -9,6 +9,9 @@ import java.util.UUID
 
 object JsonCodecs:
 
+  // ── Decoders ───────────────────────────────────────────
+  given Decoder[UpdateDeviceRequest] = deriveDecoder[UpdateDeviceRequest]
+
   // ── Encoders ───────────────────────────────────────────
   given Encoder[Device]        = deriveEncoder[Device]
   given Encoder[Scan]          = deriveEncoder[Scan]

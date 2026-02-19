@@ -18,11 +18,30 @@ async function fetchJson<T>(path: string, params?: Record<string, string>): Prom
   return response.json()
 }
 
+async function mutateJson<T>(path: string, method: string, body?: unknown): Promise<T> {
+  const url = `${BASE_URL}${path}`
+  const response = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  })
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: response.statusText }))
+    throw new Error(error.message || `HTTP ${response.status}`)
+  }
+  return response.json()
+}
+
+export function getDeviceLabel(device: Device): string {
+  return device.displayName ?? device.hostname ?? device.ipAddress
+}
+
 export interface Device {
   id: string
   macAddress: string
   ipAddress: string
   hostname: string | null
+  displayName: string | null
   vendor: string | null
   firstSeenAt: string
   lastSeenAt: string
@@ -101,4 +120,7 @@ export const api = {
       ...(params?.limit !== undefined && { limit: String(params.limit) }),
       ...(params?.offset !== undefined && { offset: String(params.offset) }),
     }),
+
+  updateDeviceName: (deviceId: string, displayName: string | null) =>
+    mutateJson<Device>(`/devices/${deviceId}`, 'PATCH', { displayName }),
 }

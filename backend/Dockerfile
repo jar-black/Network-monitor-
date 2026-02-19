@@ -1,5 +1,5 @@
 # ── Stage 1: Build ─────────────────────────────────────────
-FROM sbtscala/scala-sbt:eclipse-temurin-21.0.5_11_1.10.7_3.5.2 AS build
+FROM sbtscala/scala-sbt:eclipse-temurin-21.0.8_9_1.12.2_3.3.7 AS build
 
 WORKDIR /app
 COPY project/build.properties project/plugins.sbt project/
@@ -17,7 +17,6 @@ RUN apk add --no-cache nmap nmap-scripts arp-scan bash
 
 WORKDIR /app
 COPY --from=build /app/target/universal/stage/ ./
-COPY src/main/resources/db/ /app/db/
 
-EXPOSE 8080
+EXPOSE 8001
 ENTRYPOINT ["bin/network-monitor-backend"]

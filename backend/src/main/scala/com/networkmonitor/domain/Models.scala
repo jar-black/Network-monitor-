@@ -8,11 +8,14 @@ final case class Device(
     macAddress: String,
     ipAddress: String,
     hostname: Option[String],
+    displayName: Option[String],
     vendor: Option[String],
     firstSeenAt: Instant,
     lastSeenAt: Instant,
     isActive: Boolean
 )
+
+final case class UpdateDeviceRequest(displayName: Option[String])
 
 final case class Scan(
     id: UUID,

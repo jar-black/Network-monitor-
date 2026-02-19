@@ -81,11 +81,26 @@ class Routes(
           }
         },
         path(JavaUUID) { deviceId =>
-          get {
-            runIO(deviceRepo.findById(deviceId)) match
-              case Some(device) => complete(device)
-              case None         => complete(StatusCodes.NotFound -> ErrorResponse("not_found", "Device not found"))
-          }
+          concat(
+            get {
+              runIO(deviceRepo.findById(deviceId)) match
+                case Some(device) => complete(device)
+                case None         => complete(StatusCodes.NotFound -> ErrorResponse("not_found", "Device not found"))
+            },
+            patch {
+              entity(as[UpdateDeviceRequest]) { req =>
+                val updated = runIO {
+                  for
+                    success <- deviceRepo.updateDisplayName(deviceId, req.displayName)
+                    device  <- if success then deviceRepo.findById(deviceId) else IO.pure(None)
+                  yield device
+                }
+                updated match
+                  case Some(device) => complete(device)
+                  case None         => complete(StatusCodes.NotFound -> ErrorResponse("not_found", "Device not found"))
+              }
+            }
+          )
         },
         path(JavaUUID / "activity") { deviceId =>
           get {

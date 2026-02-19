@@ -31,15 +31,13 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: "jdbc:postgresql://db:5432/network_monitor"
+      DATABASE_URL: "jdbc:postgresql://localhost:5432/network_monitor"
       DATABASE_USER: netmon
       DATABASE_PASSWORD: netmon
-      SCAN_NETWORK_CIDR: "192.168.1.0/24"
+      SCAN_NETWORK_CIDR: "192.168.0.0/24"
       HTTP_HOST: "0.0.0.0"
-      HTTP_PORT: "8080"
-    ports:
-      - "8080:8080"
-    # Required for network scanning (ARP/nmap)
+      HTTP_PORT: "8001"
+    # Host networking required for LAN scanning (nmap/arp)
     network_mode: host
     cap_add:
       - NET_RAW
@@ -54,8 +52,10 @@ services:
     restart: unless-stopped
     depends_on:
       - backend
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
-      - "3000:80"
+      - "80:80"
 
 volumes:
   pgdata:

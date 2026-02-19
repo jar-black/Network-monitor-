@@ -49,7 +49,7 @@ class ScanRepository(xa: Transactor[IO]):
 
   def getDevicesForScan(scanId: UUID): IO[List[Device]] =
     sql"""
-      SELECT d.id, d.mac_address::text, d.ip_address::text, d.hostname, d.vendor,
+      SELECT d.id, d.mac_address::text, d.ip_address::text, d.hostname, d.display_name, d.vendor,
              d.first_seen_at, d.last_seen_at, true as is_active
       FROM devices d
       JOIN scan_results sr ON sr.device_id = d.id

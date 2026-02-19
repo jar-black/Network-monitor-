@@ -6,7 +6,7 @@ val PekkoHttpVersion   = "1.1.0"
 val CatsEffectVersion  = "3.5.7"
 val DoobieVersion      = "1.0.0-RC6"
 val CirceVersion       = "0.14.10"
-val FlywayVersion      = "10.22.1"
+val FlywayVersion      = "10.22.0"
 val LogbackVersion     = "1.5.15"
 val PureConfigVersion  = "0.17.8"
 val ScalaTestVersion   = "3.2.19"
@@ -88,6 +88,6 @@ lazy val root = (project in file("."))
     Docker / packageName := "network-monitor-backend",
     Docker / version     := version.value,
     dockerBaseImage      := "eclipse-temurin:21-jre-alpine",
-    dockerExposedPorts   := Seq(8080),
+    dockerExposedPorts   := Seq(8001),
     dockerUpdateLatest   := true,
   )

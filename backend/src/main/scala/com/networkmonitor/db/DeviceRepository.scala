@@ -13,7 +13,7 @@ class DeviceRepository(xa: Transactor[IO]):
 
   def findAll(activeOnly: Boolean, since: Instant, until: Instant, limit: Int, offset: Int): IO[List[Device]] =
     val baseQuery = fr"""
-      SELECT d.id, d.mac_address::text, d.ip_address::text, d.hostname, d.vendor,
+      SELECT d.id, d.mac_address::text, d.ip_address::text, d.hostname, d.display_name, d.vendor,
              d.first_seen_at, d.last_seen_at,
              EXISTS(
                SELECT 1 FROM scan_results sr
@@ -35,7 +35,7 @@ class DeviceRepository(xa: Transactor[IO]):
 
   def findById(id: UUID): IO[Option[Device]] =
     sql"""
-      SELECT d.id, d.mac_address::text, d.ip_address::text, d.hostname, d.vendor,
+      SELECT d.id, d.mac_address::text, d.ip_address::text, d.hostname, d.display_name, d.vendor,
              d.first_seen_at, d.last_seen_at,
              EXISTS(
                SELECT 1 FROM scan_results sr
@@ -56,6 +56,10 @@ class DeviceRepository(xa: Transactor[IO]):
         AND s.started_at <= $until
       ORDER BY s.started_at ASC
     """.query[ActivityEntry].to[List].transact(xa)
+
+  def updateDisplayName(id: UUID, displayName: Option[String]): IO[Boolean] =
+    sql"UPDATE devices SET display_name = $displayName WHERE id = $id"
+      .update.run.transact(xa).map(_ > 0)
 
   def upsertDevice(mac: String, ip: String, hostname: Option[String]): IO[UUID] =
     sql"""
