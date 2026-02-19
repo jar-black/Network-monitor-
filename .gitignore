@@ -1,3 +1,8 @@
+# Environment
+.env
+.env.*
+!.env.example
+
 # Scala / sbt
 backend/target/
 backend/project/target/
